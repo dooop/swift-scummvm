@@ -195,3 +195,88 @@ jobs:
             fi
           done
           echo "framework, payload and engine symbols OK"
+
+  build-android:
+    name: Build (Android AAR)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # Upstream's configure greps this out of dists/android/build.gradle and
+      # aborts on any mismatch, so it has to be the exact revision.
+      NDK_VERSION: "23.2.8568313"
+      # A representative slice of engines: enough to exercise configure, the
+      # NDK toolchain, JNI wiring and packaging without a two-hour full build.
+      # Drop scummvm.configureArgs to build every stable engine.
+      SCUMMVM_ABIS: "arm64-v8a"
+      SCUMMVM_CONFIGURE_ARGS: "--disable-all-engines --enable-engine=scumm,sky,sword1,agi"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK ${{ env.NDK_VERSION }}
+        run: |
+          sdkmanager --install "ndk;${NDK_VERSION}"
+          # The runner image pre-sets ANDROID_NDK_ROOT/HOME to its bundled
+          # default NDK, which build.gradle.kts's resolveNdkDir() prefers over
+          # the SDK-relative path -- repoint them at the pinned version we
+          # just installed so the wrong NDK doesn't win.
+          echo "ANDROID_NDK_ROOT=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Record submodule commit
+        run: git -C Sources/ScummVMEngine rev-parse HEAD > .scummvmengine-sha
+
+      - name: Cache native engine build
+        uses: actions/cache@v4
+        with:
+          path: android/scummvm/build/native
+          key: android-native-v1-${{ env.SCUMMVM_ABIS }}-${{ hashFiles('.scummvmengine-sha') }}-${{ hashFiles('.github/workflows/ci.yml') }}
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle/libs.versions.toml', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+
+      # The build resolves the NDK from $ANDROID_HOME/ndk/<version>, with the
+      # version read out of the submodule's dists/android/build.gradle.
+      - name: Build AAR
+        working-directory: android
+        run: |
+          ./gradlew --no-daemon :scummvm:assembleRelease \
+            -Pscummvm.abis="${SCUMMVM_ABIS}" \
+            -Pscummvm.configureArgs="${SCUMMVM_CONFIGURE_ARGS}"
+
+      - name: Build release test app from the AAR
+        working-directory: android
+        run: |
+          ./gradlew --no-daemon :app:assembleRelease \
+            -Pscummvm.releaseAar="${GITHUB_WORKSPACE}/android/scummvm/build/outputs/aar/scummvm-release.aar"
+
+      - name: Upload AAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: scummvm-android-aar
+          path: android/scummvm/build/outputs/aar/*.aar
+          if-no-files-found: error
+
+      - name: Upload test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: scummvm-android-test-app
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error

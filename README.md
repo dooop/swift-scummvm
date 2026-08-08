@@ -1,6 +1,6 @@
 # swift-scummvm
 
-SwiftUI wrapper around the upstream ScummVM codebase, packaged as a Swift Package with minimal ObjC++ glue. The core goal is to reuse as much upstream C/C++ as possible while keeping platform-specific wrapper code small and focused.
+SwiftUI wrapper around the upstream ScummVM codebase, packaged as a Swift Package with minimal ObjC++ glue, plus a Jetpack Compose wrapper packaged as an Android AAR (see [`android/`](android/README.md)). The core goal is to reuse as much upstream C/C++ as possible while keeping platform-specific wrapper code small and focused.
 
 Upstream ScummVM repository: [scummvm/scummvm](https://github.com/scummvm/scummvm).
 
@@ -8,7 +8,7 @@ Upstream ScummVM repository: [scummvm/scummvm](https://github.com/scummvm/scummv
 - Reuse upstream ScummVM code directly via the `Sources/ScummVMEngine/` git submodule.
 - Keep Swift and ObjC++ wrappers thin and localized to `Sources/`.
 - Avoid long-lived forks or large downstream patches in the submodule.
-- Ship as a Swift Package that can be embedded in iOS, tvOS, and macOS apps.
+- Ship as a Swift Package that can be embedded in iOS, tvOS, and macOS apps, and as an AAR that can be embedded in Android apps.
 
 ## Build modes
 
@@ -58,8 +58,19 @@ Key entry points:
 - `ScummVMView` bridges the engine UI into SwiftUI (iOS/tvOS uses a `UIViewController`, macOS provides an empty host view while SDL owns its window).
 - `ScummVMEngine` ObjC API is the minimal bridge used by Swift.
 
+## Android
+
+The Android wrapper lives in [`android/`](android/README.md) and is a separate Gradle build:
+
+```sh
+cd android && ./gradlew :scummvm:assembleRelease
+```
+
+It produces an AAR containing `libscummvm.so` (built from the same submodule via upstream's own `configure`/`make`), the JNI-facing upstream Java classes, ScummVM's runtime data as assets, and a Compose `ScummVM` composable. It needs JDK 17+, the Android SDK, and **NDK 23.2.8568313 exactly** — upstream's `configure` refuses any other revision. Read [`android/README.md`](android/README.md) for the build properties and the known limitations before embedding it.
+
 ## Requirements
-- Platforms: iOS 17+, tvOS 17+, macOS 15+.
+- Apple platforms: iOS 17+, tvOS 17+, macOS 15+.
+- Android: minSdk 21, compileSdk 36.
 - Swift tools version: 6.0 (see `Package.swift`).
 - Apple Silicon host and target. Intel macOS and `x86_64` simulators are unsupported.
 - The `ScummVMEngine/` submodule is required only in source mode.

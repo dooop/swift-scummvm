@@ -47,7 +47,8 @@
 - ObjC++ glue: `Sources/ScummVMiOS/`, `Sources/ScummVMmacOS/`, `Sources/ScummVMtvOS/`
 - Override translation units: `Sources/ScummVMEngineOverrides/`
 - Build configuration: `Package.swift`
-- Documentation: `README.md`
+- Android Compose wrapper and its Gradle build: `android/`
+- Documentation: `README.md`, `android/README.md`
 - Repository skills: `.agents/skills/`
 
 ## When build issues occur

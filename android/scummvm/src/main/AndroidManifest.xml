@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Intentionally empty.
+
+    Permissions and hardware requirements are the consuming app's call, not the
+    library's, so nothing is merged into the host manifest. See android/README.md
+    for the set an app embedding ScummVM normally declares.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
