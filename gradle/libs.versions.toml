@@ -2,7 +2,7 @@
 # Kept in step with what upstream's dists/android/build.gradle pins, so the two
 # builds agree on the toolchain they expect to find.
 agp = "9.4.0"
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 composeBom = "2026.08.00"
 androidxAnnotation = "1.10.0"
 androidxActivity = "1.13.0"
